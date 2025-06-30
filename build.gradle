@@ -114,3 +114,68 @@ task buildAllJars {
     group = "app"
     dependsOn apiJar, implJar
 }
+
+task configureGit {
+    doLast {
+        def configFile = new File("${projectDir}/.git/config")
+        if (!configFile.exists()) {
+            throw new GradleException(".git/config file not found")
+        }
+
+        // Чтение и парсинг файла
+        def gitConfig = [:]
+        String currentSection = null
+
+        configFile.eachLine { line ->
+            line = line.trim()
+
+            // Обработка секции [section]
+            if (line.startsWith('[') && line.endsWith(']')) {
+                currentSection = line.substring(1, line.length() - 1)
+                gitConfig[currentSection] = [:]
+            }
+            // Обработка ключ=значение (только если мы внутри секции)
+            else if (currentSection != null && line.contains('=')) {
+                def parts = line.split('=', 2)
+                gitConfig[currentSection][parts[0].trim()] = parts[1].trim()
+            }
+        }
+
+        println "Original config:"
+        println gitConfig
+
+        println ''
+        println 'Start editing config:'
+
+        if(!gitConfig['core']) gitConfig['core'] = [:]
+        gitConfig['core']['hooksPath'] = '.githooks'
+        println 'core.hooksPath = .githooks'
+
+        if(!gitConfig['merge']) gitConfig['merge'] = [:]
+        gitConfig['merge']['ff'] = 'false'
+        println 'merge.ff = false'
+
+        println ''
+        println "New config:"
+        println gitConfig
+
+        // Сериализация обратно в файл
+        def newConfigContent = new StringBuilder()
+
+        gitConfig.each { section, entries ->
+            newConfigContent << "[$section]\n"
+            entries.each { key, value ->
+                newConfigContent << "\t$key = $value\n"
+            }
+        }
+
+        // Запись в файл
+        configFile.text = newConfigContent.toString()
+        println "Git config updated successfully"
+    }
+}
+
+task configure {
+    group = "app"
+    dependsOn configureGit
+}
