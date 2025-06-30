@@ -1,0 +1,116 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+ext {
+    lombokVersion = '1.18.32'
+    junitVersion = '5.8.1'
+}
+
+group = 'sgs.js.common'
+version = '0.0.1-SNAPSHOT'
+
+// plugin: java
+compileJava {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+    options.encoding = 'UTF-8'
+}
+
+// plugin: application
+application {
+    applicationDefaultJvmArgs = ['-Xmx1024k', '-Xms1024k']
+}
+
+repositories {
+    mavenCentral()
+}
+
+test {
+    useJUnitPlatform()
+}
+
+sourceSets {
+    api {
+        java {
+            srcDirs = ['src/api/java']
+        }
+    }
+    impl {
+        java {
+            srcDirs = ['src/impl/java']
+        }
+    }
+    apiTest {
+        java {
+            srcDirs = ['src/apiTest/java']
+        }
+    }
+    test {
+        java {
+            srcDirs = ['src/test/java']
+        }
+    }
+}
+
+//    testImplementation 'org.junit.jupiter:junit-jupiter'
+
+dependencies {
+    // настройка зависимостей для имплиментации
+    // - lombok
+    implCompileOnly "org.projectlombok:lombok:${lombokVersion}"
+    implAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+    // - api
+    implImplementation sourceSets.api.output
+
+    // настройка зависимостей для абстрактных тестов api
+    // - lombok
+    apiTestCompileOnly "org.projectlombok:lombok:${lombokVersion}"
+    apiTestAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+    // - junit
+    apiTestImplementation "org.junit.jupiter:junit-jupiter:${junitVersion}"
+    // - api
+    apiTestImplementation sourceSets.api.output
+
+    // настройка зависимостей для тестов имплементации
+    // - lombok
+    apiTestCompileOnly "org.projectlombok:lombok:${lombokVersion}"
+    apiTestAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+    // - junit
+    testImplementation "org.junit.jupiter:junit-jupiter:${junitVersion}"
+    // - api
+    testImplementation sourceSets.api.output
+    // - apiTest
+    testImplementation sourceSets.apiTest.output
+    // - implementation
+    testImplementation sourceSets.impl.output
+}
+
+
+// Задача для сборки JAR для api
+task apiJar(type: Jar) {
+    from sourceSets.api.output
+    archiveBaseName.set('common-api')
+    archiveVersion.set(version)
+}
+
+// Задача для сборки JAR для impl
+task implJar(type: Jar) {
+    from sourceSets.impl.output
+    archiveBaseName.set('common-impl')
+    archiveVersion.set(version)
+}
+
+// Задача для сборки JAR для apiTest
+task apiTestJar(type: Jar) {
+    from sourceSets.apiTest.output
+    archiveBaseName.set('common-api-test')
+    archiveVersion.set(version)
+}
+
+// Задача для сборки всех JAR
+task buildAllJars {
+    group = "app"
+    dependsOn apiJar, implJar
+}
